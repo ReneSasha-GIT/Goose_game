@@ -7,13 +7,18 @@ pygame.init()
 FPS = pygame.time.Clock()
 HEIGHT = 800
 WIDTH = 1200
-FONT = pygame.font.SysFont('Verdana', 20)
+FONT1 = pygame.font.SysFont('Verdana', 20)
+FONT2 = pygame.font.SysFont('Verdana', 40)
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
 COLOR_BLUE = (0, 0, 255)
 COLOR_GREEN = (0, 255, 0)
+COLOR_RED = (255, 0, 0)
+COLOR_YELLOW = (255, 255, 0)
 
 main_display = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Goose game")
+pygame.display.set_icon(pygame.image.load("goose.png"))
 
 bg = pygame.transform.scale(pygame.image.load('background.png'), (WIDTH, HEIGHT))
 bg_X1 = 0
@@ -22,7 +27,6 @@ bg_move = 3
 
 IMAGE_PATH = "Goose"
 PLAYER_IMAGES = os.listdir(IMAGE_PATH)
-print(PLAYER_IMAGES)
 
 player = pygame.image.load('player.png').convert_alpha()
 player_rect = player.get_rect()
@@ -31,6 +35,11 @@ player_move_down = [0, 4]
 player_move_right = [4, 0]
 player_move_up = [0, -4]
 player_move_left = [-4, 0]
+
+lose_label = FONT2.render("Game Over", True, COLOR_RED)
+lose_label_rect = lose_label.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 100))
+restart_label = FONT2.render("Play Again (click)", True, COLOR_YELLOW)
+restart_label_rect = restart_label.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
 
 
 def create_enemy():
@@ -63,8 +72,72 @@ score = 0
 image_index = 0
 
 playing = True
+gameplay = True
 while playing:
+    if gameplay:
+        bg_X1 -= bg_move
+        bg_X2 -= bg_move
+        if bg_X1 < -bg.get_width():
+            bg_X1 = bg.get_width()
+        if bg_X2 < -bg.get_width():
+            bg_X2 = bg.get_width()
+        main_display.blit(bg, (bg_X1, 0))
+        main_display.blit(bg, (bg_X2, 0))
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_DOWN] and player_rect.bottom < HEIGHT:
+            player_rect = player_rect.move(player_move_down)
+        if keys[pygame.K_RIGHT] and player_rect.right < WIDTH:
+            player_rect = player_rect.move(player_move_right)
+        if keys[pygame.K_UP] and player_rect.top > 0:
+            player_rect = player_rect.move(player_move_up)
+        if keys[pygame.K_LEFT] and player_rect.left > 0:
+            player_rect = player_rect.move(player_move_left)
+
+        for enemy in enemies:
+            enemy[1] = enemy[1].move(enemy[2])
+            main_display.blit(enemy[0], enemy[1])
+            if player_rect.colliderect(enemy[1]):
+                gameplay = False
+
+        for bonus in bonuses:
+            bonus[1] = bonus[1].move(bonus[2])
+            main_display.blit(bonus[0], bonus[1])
+            if player_rect.colliderect(bonus[1]):
+                score += 1
+                bonuses.pop(bonuses.index(bonus))
+
+        main_display.blit(FONT1.render(f"Score: {str(score)}", True, COLOR_BLACK), (WIDTH - 120, 20))
+        main_display.blit(player, player_rect)
+
+        for enemy in enemies:
+            if enemy[1].left < 0:
+                enemies.pop(enemies.index(enemy))
+
+        for bonus in bonuses:
+            if bonus[1].bottom > HEIGHT:
+                bonuses.pop(bonuses.index(bonus))
+
+    else:
+        main_display.fill(COLOR_BLACK)
+        main_display.blit(lose_label, lose_label_rect)
+        result_label = FONT2.render(f"Your Score: {str(score)}", True, COLOR_BLUE)
+        result_label_rect = result_label.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        main_display.blit(result_label, result_label_rect)
+        main_display.blit(restart_label, restart_label_rect)
+
+        mouse = pygame.mouse.get_pos()
+        if restart_label_rect.collidepoint(mouse) and pygame.mouse.get_pressed()[0]:
+            gameplay = True
+            player_rect = player.get_rect(x=0, centery=main_display.get_rect().centery)
+            bonuses.clear()
+            enemies.clear()
+            score = 0
+
+    pygame.display.flip()
+
     FPS.tick(120)
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             playing = False
@@ -77,48 +150,3 @@ while playing:
             image_index += 1
             if image_index >= len(PLAYER_IMAGES):
                 image_index = 0
-
-    bg_X1 -= bg_move
-    bg_X2 -= bg_move
-    if bg_X1 < -bg.get_width():
-        bg_X1 = bg.get_width()
-    if bg_X2 < -bg.get_width():
-        bg_X2 = bg.get_width()
-    main_display.blit(bg, (bg_X1, 0))
-    main_display.blit(bg, (bg_X2, 0))
-
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_DOWN] and player_rect.bottom < HEIGHT:
-        player_rect = player_rect.move(player_move_down)
-    if keys[pygame.K_RIGHT] and player_rect.right < WIDTH:
-        player_rect = player_rect.move(player_move_right)
-    if keys[pygame.K_UP] and player_rect.top > 0:
-        player_rect = player_rect.move(player_move_up)
-    if keys[pygame.K_LEFT] and player_rect.left > 0:
-        player_rect = player_rect.move(player_move_left)
-
-    for enemy in enemies:
-        enemy[1] = enemy[1].move(enemy[2])
-        main_display.blit(enemy[0], enemy[1])
-        if player_rect.colliderect(enemy[1]):
-            playing = False
-
-    for bonus in bonuses:
-        bonus[1] = bonus[1].move(bonus[2])
-        main_display.blit(bonus[0], bonus[1])
-        if player_rect.colliderect(bonus[1]):
-            score += 1
-            bonuses.pop(bonuses.index(bonus))
-
-    main_display.blit(FONT.render(str(score), True, COLOR_BLACK), (WIDTH - 50, 20))
-    main_display.blit(player, player_rect)
-
-    pygame.display.flip()
-
-    for enemy in enemies:
-        if enemy[1].left < 0:
-            enemies.pop(enemies.index(enemy))
-
-    for bonus in bonuses:
-        if bonus[1].bottom > HEIGHT:
-            bonuses.pop(bonuses.index(bonus))
